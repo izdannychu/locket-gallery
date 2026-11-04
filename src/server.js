@@ -38,6 +38,12 @@ async function historyPage(s,input){
   // Locket history is in the named `locket` database, separate from the latest feed.
   const parent='projects/locket-4252a/databases/locket/documents/history/'+s.uid;
   const query={from:[{collectionId:'entries'}],orderBy:[{field:{fieldPath:'date'},direction:'DESCENDING'},{field:{fieldPath:'__name__'},direction:'DESCENDING'}],limit:50};
+  const {from,to}=input;
+  if(!Number.isSafeInteger(from)||!Number.isSafeInteger(to)||from<0||to<=from||to>Date.now()+172800000)throw new AppError('Hãy chọn khoảng thời gian đồng bộ hợp lệ.');
+  query.where={compositeFilter:{op:'AND',filters:[
+    {fieldFilter:{field:{fieldPath:'date'},op:'GREATER_THAN_OR_EQUAL',value:{timestampValue:new Date(from).toISOString()}}},
+    {fieldFilter:{field:{fieldPath:'date'},op:'LESS_THAN',value:{timestampValue:new Date(to).toISOString()}}},
+  ]}};
   if(input.cursor!=null){
     const c=input.cursor;
     if(typeof c.date!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(c.date)||!Number.isFinite(Date.parse(c.date))||typeof c.id!=='string'||!c.id||c.id.length>1500||c.id.includes('/')||['.','..'].includes(c.id))throw new AppError('Mốc lịch sử không hợp lệ.');

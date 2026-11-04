@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 const source=await readFile('src/server.js','utf8');
 const worker=(await import('data:text/javascript;base64,'+Buffer.from('const HTML="<html lang=vi>Gallery</html>";\n'+source).toString('base64'))).default;
 const env={SESSION_SECRET:'a-random-secret-used-only-in-tests'};
-const req=(path,body,cookie,owner='alice')=>new Request('https://gallery.example'+path,{method:body?'POST':'GET',headers:{origin:'https://gallery.example','oai-authenticated-user-id':owner,...(cookie?{cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});
+const req=(path,body,cookie,owner='alice')=>new Request('https://gallery.example'+path,{method:body?'POST':'GET',headers:{origin:'https://gallery.example','oai-authenticated-user-id':owner,...(cookie?{cookie}:{})},...(body?{body:JSON.stringify(path==='/api/history'?{from:Date.UTC(2020,0,1),to:Date.UTC(2026,10,5),...body}:body)}:{})});
 test('Authentication boundaries, encrypted session, feed and token refresh',async()=>{
   const real=globalThis.fetch;let refreshed=false;const calls=[];
   globalThis.fetch=async(url,options)=>{
@@ -46,6 +46,9 @@ test('History uses the account history database, stable cursor and exact timesta
     const login=await worker.fetch(req('/api/login',{identifier:'test@example.com',password:'password'}),env);const cookie=login.headers.get('set-cookie');
     const first=await worker.fetch(req('/api/history',{},cookie),env);assert.equal(first.status,200);const a=await first.json();assert.equal(a.complete,false,'A short page does not imply end of history');assert.equal(a.moments[0].id,'photo-z');assert.equal(a.moments[0].date,timestamp);assert.equal(a.moments[0].reactions[0].count,2);
     const query=calls.at(-1).body.structuredQuery;assert.deepEqual(query.orderBy.map(x=>x.field.fieldPath),['date','__name__']);assert.equal(query.limit,50);
+    assert.deepEqual(query.where.compositeFilter.filters.map(f=>[f.fieldFilter.op,f.fieldFilter.value.timestampValue]),[['GREATER_THAN_OR_EQUAL','2020-01-01T00:00:00.000Z'],['LESS_THAN','2026-11-05T00:00:00.000Z']]);
+    const badRange=await worker.fetch(req('/api/history',{from:10,to:5},cookie),env);assert.equal(badRange.status,400);
+    const missingRange=await worker.fetch(req('/api/history',{from:null,to:null},cookie),env);assert.equal(missingRange.status,400);
     const second=await worker.fetch(req('/api/history',{cursor:a.nextCursor},cookie),env);const b=await second.json();assert.equal(b.moments[0].id,'photo-a');const start=calls.at(-1).body.structuredQuery.startAt;assert.equal(start.values[0].timestampValue,timestamp);assert.match(start.values[1].referenceValue,/history\/my-uid\/entries\/photo-z$/);assert.equal(start.before,false);
     const end=await worker.fetch(req('/api/history',{cursor:b.nextCursor},cookie),env);assert.deepEqual(await end.json(),{moments:[],nextCursor:null,complete:true});
     const before=calls.length;const bad=await worker.fetch(req('/api/history',{cursor:{date:timestamp,id:'../../someone-else'}},cookie),env);assert.equal(bad.status,400);assert.equal(calls.length,before,'Reject a cross-account cursor before making a request');

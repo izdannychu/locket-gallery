@@ -17,3 +17,7 @@ h1,h2,.detail-info h3,.empty h3{font-weight:600}
 .sync-progress p{font-size:11px;color:#777b68;line-height:1.7;margin:6px 0 0;overflow-wrap:anywhere}
 .sync-progress button{font-size:11px;white-space:nowrap;font-weight:600}
 @media(max-width:680px){.sync-progress{flex-wrap:wrap;gap:9px;padding:13px}.sync-progress>div{flex-basis:100%}.sync-progress strong{font-size:11px}.sync-progress p,.sync-progress button{font-size:10px}}
+.sync-choice{display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid #e5dfca;background:#f6f1df;border-radius:10px;padding:17px 19px;margin-bottom:20px}
+.sync-choice strong{font-size:13px;font-weight:650}.sync-choice p{font-size:12px;line-height:1.7;margin:6px 0;color:#73745f}.sync-choice small{font-size:10px;color:#92907d}.sync-choice button{white-space:nowrap}
+#period-preset{display:block;width:100%;max-width:none;background:#fffdfa;font-size:12px;padding:12px;margin-top:8px}.period-dates{display:grid;grid-template-columns:1fr 1fr;gap:14px}.period-dates input{min-width:0}#period-submit{margin-top:18px}
+@media(max-width:680px){.sync-choice{flex-wrap:wrap;padding:14px;gap:12px}.sync-choice p{font-size:11px}.sync-choice small{font-size:9px}.period-dates{gap:9px}}
