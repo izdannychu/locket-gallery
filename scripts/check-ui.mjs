@@ -17,7 +17,7 @@ const fakeDB={
   },
 };
 const indexedDB={open(){const r={};queueMicrotask(()=>{r.result=fakeDB;r.onsuccess?.();});return r;}};
-const element=id=>{if(!elements.has(id))elements.set(id,{value:id==='#sort'?'new':'',textContent:'',innerHTML:'',hidden:false,disabled:false,classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}});return elements.get(id);};
+const element=id=>{if(!elements.has(id)){let html='';elements.set(id,{value:id==='#sort'?'new':'',textContent:'',get innerHTML(){return html;},set innerHTML(value){html=value;this.htmlWrites=(this.htmlWrites||0)+1;},hidden:false,disabled:false,classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}});}return elements.get(id);};
 const context=vm.createContext({document:{querySelector:element,querySelectorAll:()=>[],createElement:()=>({})},localStorage:{getItem:()=>null,setItem(){}},indexedDB,location:{href:'https://gallery.example'},URL,Date:TestDate,Set,Map,JSON,String,Array,Math,Number,Error,AbortController,console,setTimeout:()=>0,clearTimeout(){},fetch:async()=>({ok:false,status:401,json:async()=>({error:'Not connected'})})});
 const workerSource=await readFile('dist/server/index.js','utf8');
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(workerSource).toString('base64'))).default;
@@ -116,3 +116,23 @@ assert.equal(vm.runInContext('state.moments.some(m=>m.id==="new-friend")',contex
 storageDenied=true;element('#period-start').value='2026-10-25';await vm.runInContext("document.querySelector('#period-form').onsubmit({preventDefault(){}})",context);assert.match(element('#period-error').textContent,/Không lưu được/);assert.equal(vm.runInContext('state.selection.startDay',context),'2026-10-20','Failed storage cannot silently replace the saved choice');storageDenied=false;
 assert.ok(!JSON.stringify(persisted).includes('password'));
 console.log('Selected ranges, persistence, account isolation, incremental friend updates, narrowing and storage errors passed');
+vm.runInContext("resetData();state.mode='demo';state.me={uid:'me',name:'Bạn'};state.friends=[{uid:'friend',name:'Linh'}];state.moments=Array.from({length:10000},(_,i)=>normalize({id:'large-'+i,user:i%2?'me':'friend',date:Date.now()-i*60000,image_url:'https://example.com/photo.jpg',caption:'Memory '+i},i));render()",context);
+const cards=()=>(element('#gallery').innerHTML.match(/class="moment"/g)||[]).length;
+assert.equal(cards(),60);assert.equal(element('#visible-count').textContent,10000);assert.equal(element('#gallery-pagination').hidden,false);
+const writes=element('#gallery').htmlWrites;vm.runInContext('render();renderSync()',context);assert.equal(element('#gallery').htmlWrites,writes,'Status updates must retain existing image nodes');
+vm.runInContext("document.querySelector('#layout').onclick()",context);assert.equal(element('#gallery').htmlWrites,writes,'Layout switch must only change CSS classes');
+vm.runInContext("document.querySelector('#page-next').onclick()",context);assert.equal(cards(),60);assert.ok(element('#gallery').innerHTML.includes('large-60'));assert.ok(!element('#gallery').innerHTML.includes('data-open="large-0"'));
+vm.runInContext("changeGalleryPage(10000)",context);assert.equal(cards(),40);assert.equal(element('#page-next').disabled,true);assert.ok(element('#gallery').innerHTML.includes('large-9999'));
+vm.runInContext("setView('mine')",context);assert.equal(element('#visible-count').textContent,5000);assert.equal(vm.runInContext('galleryPage',context),0);assert.equal(cards(),60);
+vm.runInContext("setView('all')",context);
+const favoriteButton={dataset:{save:'large-0'},classList:{toggle(){}},setAttribute(name,value){this[name]=value;},textContent:''};
+const beforeFavorite=element('#gallery').htmlWrites;
+context.favoriteButton=favoriteButton;
+vm.runInContext("document.querySelector('#gallery').onclick({target:{closest(selector){return selector==='[data-save]'?favoriteButton:null;}}})",context);
+assert.equal(element('#gallery').htmlWrites,beforeFavorite,'Favoriting a card must not rebuild the gallery');assert.equal(favoriteButton['aria-pressed'],'true');assert.equal(element('#fav-count').textContent,1);
+vm.runInContext("document.querySelector('#gallery').onclick({target:{closest(selector){return selector==='[data-open]'?{dataset:{open:'large-0'}}:null;}}})",context);assert.equal(element('#detail-dialog').open,true);
+vm.runInContext("setView('favorites')",context);assert.equal(element('#visible-count').textContent,1);assert.equal(cards(),1);
+vm.runInContext("toggleFavorite('large-0')",context);assert.equal(element('#visible-count').textContent,0);
+vm.runInContext("setView('all');document.querySelector('#sort').value='old';renderGallery()",context);assert.ok(element('#gallery').innerHTML.includes('data-open="large-9999"'));
+vm.runInContext("document.querySelector('#search').value='Memory 9999';renderGallery()",context);assert.equal(element('#visible-count').textContent,1);assert.equal(cards(),1);
+console.log('10,000-item gallery: bounded pages, oldest access, stable image nodes, delegated actions and filtering passed');

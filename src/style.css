@@ -21,3 +21,21 @@ h1,h2,.detail-info h3,.empty h3{font-weight:600}
 .sync-choice strong{font-size:13px;font-weight:650}.sync-choice p{font-size:12px;line-height:1.7;margin:6px 0;color:#73745f}.sync-choice small{font-size:10px;color:#92907d}.sync-choice button{white-space:nowrap}
 #period-preset{display:block;width:100%;max-width:none;background:#fffdfa;font-size:12px;padding:12px;margin-top:8px}.period-dates{display:grid;grid-template-columns:1fr 1fr;gap:14px}.period-dates input{min-width:0}#period-submit{margin-top:18px}
 @media(max-width:680px){.sync-choice{flex-wrap:wrap;padding:14px;gap:12px}.sync-choice p{font-size:11px}.sync-choice small{font-size:9px}.period-dates{gap:9px}}
+/* Compact gallery: consistent density and a single font family. */
+:root{--font:'Inter',system-ui,sans-serif}
+body{font-weight:500}.brand,.stats b,h2>span{font-family:var(--font)}
+h1,h2,.detail-info h3,.empty h3{font-weight:700}
+.nav-item,.filter-tabs button,.primary,.connect-btn,.friend,.moment-meta strong,.caption,.sync-choice strong,.section-title h2{font-weight:600}
+.sidebar{padding-top:24px}.brand{margin-bottom:28px}.friends-label{margin-top:22px}.nav-item{padding-top:11px;padding-bottom:11px}
+main{padding-left:26px;padding-right:26px}header{height:66px}.intro{padding:23px 0 20px;gap:24px}
+h1{font-size:36px;line-height:1.25;margin:10px 0;letter-spacing:-1.3px}.intro p{font-size:12px;line-height:1.65;font-weight:500}
+.intro-right{gap:16px}.memory-stamp{width:65px;height:65px;font-size:19px}.memory-stamp small{font-size:6px}.stats b{font-size:23px;font-weight:700}
+.connection-banner{margin-bottom:18px;padding:12px 15px;gap:11px}.sync-choice{margin-bottom:14px;padding:12px 15px;gap:14px}.sync-choice p{margin:4px 0;font-size:11px}
+.sync-progress{padding:11px 15px;margin-bottom:14px;gap:12px}.sync-progress p{margin-top:4px}.section-title{margin-bottom:13px}.filters{margin-bottom:15px;gap:10px}
+.photo-grid{gap:15px 12px;margin-bottom:19px}.month-heading{margin-bottom:11px;font-weight:600}.moment-meta{margin-top:8px}.moment-meta strong{font-size:10px}.moment-meta time{font-size:9px}
+.photo-open img{transition:transform .18s}.moment{content-visibility:auto;contain-intrinsic-size:auto 270px}.little-note{margin:18px 9px 15px;padding:13px}.account{padding:14px 4px}footer{padding:15px 0}
+.gallery-pagination{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:16px;margin:5px 0 16px;padding:8px 0;background:var(--paper);border-bottom:1px solid var(--line);font-size:11px;color:#777d6b}
+.gallery-pagination button{border:1px solid var(--line);background:#efeee6;border-radius:7px;padding:9px 12px;font-size:11px;font-weight:600}.gallery-pagination button:disabled{opacity:.4;cursor:default}
+@media(min-width:1550px){main{padding-left:34px;padding-right:34px}.intro{padding:28px 0 24px}h1{font-size:41px}.photo-grid{gap:17px 14px}}
+@media(max-width:950px){main{padding-left:20px;padding-right:20px}.sidebar{padding-top:22px}.brand{margin-bottom:25px}.nav-item{padding-top:11px;padding-bottom:11px}}
+@media(max-width:680px){main{padding-left:12px;padding-right:12px}header{height:58px}.intro{padding:18px 0 16px;gap:15px}h1{font-size:29px;margin:9px 0}.intro p{font-size:10px;line-height:1.65}.intro-right{gap:12px}.memory-stamp{width:46px;height:46px;font-size:14px}.memory-stamp small{font-size:4px}.stats b{font-size:21px}.stats span{font-size:8px}.connection-banner{margin-bottom:14px;padding:11px}.sync-choice,.sync-progress{padding:10px 12px;margin-bottom:12px}.photo-grid,.photo-grid.large{gap:13px 9px;margin-bottom:16px}.section-title{margin-bottom:11px}.filters{gap:10px;margin-bottom:13px}.month-heading{margin-bottom:9px}.moment-meta strong{font-size:9px}.moment-meta time{font-size:8px}.moment{contain-intrinsic-size:auto 185px}.gallery-pagination{gap:8px;flex-wrap:wrap;font-size:10px}.gallery-pagination button{font-size:10px;padding:8px}.gallery-pagination span{order:3;flex-basis:100%;text-align:center}}
