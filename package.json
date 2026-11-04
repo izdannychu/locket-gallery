@@ -1,0 +1,11 @@
+{
+  "name": "locket-gallery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "test": "node --test tests/server.test.mjs && node scripts/check-ui.mjs",
+    "validate": "node scripts/validate-artifact.mjs"
+  }
+}
