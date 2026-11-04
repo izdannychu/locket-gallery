@@ -24,6 +24,37 @@ async function session(req,env){
 function cookie(value,req,age=604800){return 'lg_session='+value+'; HttpOnly; SameSite=Strict; Path=/; Max-Age='+age+(new URL(req.url).protocol==='https:'?'; Secure':'');}
 async function fresh(s){if(s.expires<Date.now()+60000){const r=await upstream('https://securetoken.googleapis.com/v1/token?key='+KEY,{grantType:'refresh_token',refreshToken:s.refresh});s.token=r.id_token;s.refresh=r.refresh_token;s.expires=Date.now()+Number(r.expires_in)*1000;}return s;}
 async function body(req){if(Number(req.headers.get('content-length'))>16384)throw new AppError('Yêu cầu quá lớn.',413);const raw=await req.text();if(raw.length>16384)throw new AppError('Yêu cầu quá lớn.',413);try{return JSON.parse(raw);}catch{throw new AppError('Dữ liệu yêu cầu không hợp lệ.');}}
+function firestoreValue(value){
+  if('nullValue' in value)return null;
+  for(const key of ['stringValue','booleanValue','timestampValue','referenceValue'])if(key in value)return value[key];
+  if('integerValue' in value)return Number(value.integerValue);
+  if('doubleValue' in value)return value.doubleValue;
+  if(value.arrayValue)return (value.arrayValue.values||[]).map(firestoreValue);
+  if(value.mapValue)return firestoreFields(value.mapValue.fields||{});
+  return null;
+}
+function firestoreFields(fields){return Object.fromEntries(Object.entries(fields).map(([key,value])=>[key,firestoreValue(value)]));}
+async function historyPage(s,input){
+  // Locket history is in the named `locket` database, separate from the latest feed.
+  const parent='projects/locket-4252a/databases/locket/documents/history/'+s.uid;
+  const query={from:[{collectionId:'entries'}],orderBy:[{field:{fieldPath:'date'},direction:'DESCENDING'},{field:{fieldPath:'__name__'},direction:'DESCENDING'}],limit:50};
+  if(input.cursor!=null){
+    const c=input.cursor;
+    if(typeof c.date!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(c.date)||!Number.isFinite(Date.parse(c.date))||typeof c.id!=='string'||!c.id||c.id.length>1500||c.id.includes('/')||['.','..'].includes(c.id))throw new AppError('Mốc lịch sử không hợp lệ.');
+    // Include the document ID so equal timestamps cannot skip photos at a page boundary.
+    query.startAt={values:[{timestampValue:c.date},{referenceValue:parent+'/entries/'+c.id}],before:false};
+  }
+  let response;
+  try{response=await upstream('https://firestore.googleapis.com/v1/'+parent+':runQuery',{structuredQuery:query},s.token);}
+  catch(e){if(e.status===401)throw e;throw new AppError('Không tải được lịch sử Locket. Dữ liệu đã tải vẫn được giữ; bạn có thể thử tiếp tục. Locket có thể giới hạn quyền đọc lịch sử.',e.status===429?429:502);}
+  if(!Array.isArray(response)||response.some(row=>row.error))throw new AppError('Locket trả về lịch sử không hợp lệ. Hãy thử lại.',502);
+  const docs=response.filter(row=>row.document).map(row=>row.document);
+  if(docs.some(doc=>!doc.name?.startsWith(parent+'/entries/')||!doc.fields?.date?.timestampValue))throw new AppError('Lịch sử thiếu mốc thời gian để tải tiếp; chưa thể xác nhận đã tải hết.',502);
+  const moments=docs.map(doc=>{const value=firestoreFields(doc.fields||{});const id=doc.name.split('/').pop();return {...value,id:value.canonical_uid||value.moment_uid||id,history_entry_id:id};});
+  const last=docs.at(-1);
+  // A short page is not proof of completion. Only an empty query confirms the end.
+  return {moments,nextCursor:last?{date:last.fields.date.timestampValue,id:last.name.split('/').pop()}:null,complete:docs.length===0};
+}
 async function handle(req,env){
   const url=new URL(req.url),p=url.pathname;
   if(p==='/' && req.method==='GET')return new Response(HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','content-security-policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: blob: data:; media-src https: blob:; connect-src 'self'; frame-ancestors 'self' https://chatgpt.com https://*.chatgpt.com; base-uri 'none'; form-action 'self'"}});
@@ -47,6 +78,8 @@ async function handle(req,env){
     const endpoint='https://firestore.googleapis.com/v1/projects/locket-4252a/databases/(default)/documents/users/'+encodeURIComponent(s.uid)+'/friends?pageSize=20';
     const page=url.searchParams.get('pageToken');const r=await upstream(endpoint+(page?'&pageToken='+encodeURIComponent(page):''),undefined,s.token);
     const friends=await Promise.all((r.documents||[]).map(async d=>{const uid=d.fields?.user?.stringValue||d.name.split('/').pop();try{const profile=await upstream(API+'fetchUserV2',{data:{user_uid:uid}},s.token);const u=profile.result?.data||{};return {uid,name:[u.first_name,u.last_name].filter(Boolean).join(' ')||u.username||uid,avatar:u.profile_picture_url,username:u.username,sharedHistoryOn:d.fields?.shared_history_on?.timestampValue,createdAt:d.createTime};}catch{return {uid,name:uid,profileUnavailable:true};}}));result={friends,nextPageToken:r.nextPageToken||null};
+  }else if(p==='/api/history' && req.method==='POST'){
+    result=await historyPage(s,await body(req));
   }else if(p==='/api/feed' && req.method==='POST'){
     const b=await body(req);const users=b.users;if(!Array.isArray(users)||users.length>200||users.some(u=>typeof u!=='string'||u.length>128))throw new AppError('Danh sách người dùng không hợp lệ.');
     const data={users,excluded_users:[],should_count_missed_moments:true};if(typeof b.syncToken==='string'&&b.syncToken.length<1024)data.sync_token=b.syncToken;
