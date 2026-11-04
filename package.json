@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "predev": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
+    "pretest": "node scripts/build.mjs",
     "test": "node --test tests/server.test.mjs && node scripts/check-ui.mjs",
     "validate": "node scripts/validate-artifact.mjs"
   }
