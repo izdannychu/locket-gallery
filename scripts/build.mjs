@@ -3,11 +3,13 @@ import { spawnSync } from 'node:child_process';
 await mkdir('dist',{recursive:true});
 const cssBuild=spawnSync(process.execPath,['node_modules/@tailwindcss/cli/dist/index.mjs','-i','src/ui.css','-o','dist/ui.css','--minify'],{stdio:'inherit'});
 if(cssBuild.status!==0)throw new Error('UI CSS build failed. Run npm install before building.');
-const [template, style, script] = await Promise.all([
+const [template, style, appScript, viewerScript] = await Promise.all([
   readFile('src/index.html','utf8'),
   readFile('src/style.css','utf8'),
   readFile('src/app.js','utf8'),
+  readFile('src/swipe-viewer.js','utf8'),
 ]);
+const script=appScript+'\n'+viewerScript;
 // Callback replacements preserve literal dollar signs such as the $$ selector.
 const libraryCSS=await readFile('dist/ui.css','utf8');
 const html = template.replace('/* APP_STYLE */',()=>libraryCSS+'\n'+style).replace('/* APP_SCRIPT */',()=>script);

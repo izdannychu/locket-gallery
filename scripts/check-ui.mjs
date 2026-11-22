@@ -17,7 +17,7 @@ const fakeDB={
   },
 };
 const indexedDB={open(){const r={};queueMicrotask(()=>{r.result=fakeDB;r.onsuccess?.();});return r;}};
-const element=id=>{if(!elements.has(id)){let html='';elements.set(id,{value:id==='#sort'?'new':'',textContent:'',get innerHTML(){return html;},set innerHTML(value){html=value;this.htmlWrites=(this.htmlWrites||0)+1;},hidden:false,disabled:false,classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}});}return elements.get(id);};
+const element=id=>{if(!elements.has(id)){let html='';elements.set(id,{value:id==='#sort'?'new':'',textContent:'',style:{},get innerHTML(){return html;},set innerHTML(value){html=value;this.htmlWrites=(this.htmlWrites||0)+1;},hidden:false,disabled:false,classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}});}return elements.get(id);};
 const context=vm.createContext({document:{querySelector:element,querySelectorAll:()=>[],createElement:()=>({})},localStorage:{getItem:()=>null,setItem(){}},indexedDB,location:{href:'https://gallery.example'},URL,Date:TestDate,Set,Map,JSON,String,Array,Math,Number,Error,AbortController,console,setTimeout:()=>0,clearTimeout(){},fetch:async()=>({ok:false,status:401,json:async()=>({error:'Not connected'})})});
 const workerSource=await readFile('dist/server/index.js','utf8');
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(workerSource).toString('base64'))).default;
@@ -26,7 +26,7 @@ const css=html.match(/<style>([\s\S]*?)<\/style>/)?.[1]||'';
 assert.ok(css.includes('.btn')&&css.includes('.tabs-box')&&css.includes('.loading-spinner'),'Compiled daisyUI components must be present in the served page');
 assert.ok(!css.includes('@import "tailwindcss"')&&!css.includes('@plugin "daisyui"'),'UI library must be compiled before serving');
 const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-assert.equal(script,await readFile('src/app.js','utf8'),'Build must preserve the complete browser script byte for byte');
+assert.equal(script,(await readFile('src/app.js','utf8'))+'\n'+await readFile('src/swipe-viewer.js','utf8'),'Build must preserve the complete browser script byte for byte');
 const htmlIDs=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
 for(const match of script.matchAll(/\$\(['"]#([a-z][a-z0-9-]*)['"]\)/g))assert.ok(htmlIDs.has(match[1]),'Script must reference an existing UI control: '+match[1]);
 vm.runInContext(script,context);
@@ -39,7 +39,7 @@ vm.runInContext("setView('mine')",context);assert.equal(element('#visible-count'
 vm.runInContext("setView('friends')",context);assert.equal(element('#visible-count').textContent,9);
 vm.runInContext("setView('all'); state.type='video'; renderGallery()",context);assert.equal(element('#visible-count').textContent,0);assert.equal(element('#empty').hidden,false);
 vm.runInContext("state.type='all'; document.querySelector('#month').value='2026-10'; renderGallery()",context);assert.equal(element('#visible-count').textContent,0);
-vm.runInContext("detail('sample-0')",context);assert.match(element('#detail-content').innerHTML,/Khánh Linh/);assert.equal(element('#detail-dialog').open,true);
+vm.runInContext("detail('sample-0')",context);assert.match(element('#swipe-card').innerHTML,/Khánh Linh/);assert.equal(element('#detail-dialog').open,true);
 assert.equal(vm.runInContext("safeUrl('javascript:alert(1)')",context),'');assert.equal(vm.runInContext("esc('<img onerror=bad>')",context),'&lt;img onerror=bad&gt;');
 console.log('Gallery rendering, filters, detail and escaping passed');
 // Exercise the built app against multiple pages, not just the unbuilt sync function.
@@ -208,3 +208,53 @@ trigger.getBoundingClientRect=()=>({top:100,bottom:154});trigger.parentElement.g
 vm.runInContext("document.querySelector('#friend-picker-open').onclick()",context);assert.equal(dropdown.style.top,'88px','Opening below also uses a 4px gap');assert.equal(dropdown.style.bottom,'auto');
 context.window.matchMedia=()=>({matches:true});vm.runInContext('closeFriendPicker()',context);assert.equal(dropdown.hidden,true,'Reduced motion hides immediately without animation');
 console.log('Dropdown spacing, animation lifecycle, fast reopen and reduced-motion checks passed');
+vm.runInContext("resetData();state.mode='demo';state.me={uid:'me',name:'Bạn'};state.friends=[{uid:'friend',name:'Linh',avatar:'https://example.com/avatar.jpg'}];state.moments=Array.from({length:140},(_,i)=>normalize({id:'swipe-'+i,user:i%2?'me':'friend',image_url:'https://example.com/photo-'+i+'.jpg',date:Date.now()-i*60000,caption:i===0?'Caption <hello>':'',private_metadata:'must-not-render'},i));setView('all');render();detail('swipe-59')",context);
+assert.equal(vm.runInContext('viewer.items.length',context),140,'Swipe includes the full filtered order, not just the visible gallery page');
+assert.match(element('#swipe-back').innerHTML,/photo-60/);assert.match(element('#swipe-far').innerHTML,/photo-61/,'Stack previews the next two real moments');
+assert.equal(element('#swipe-far').hidden,false);assert.ok(!element('#swipe-far').innerHTML.includes('<video'),'Rear layers must not mount playing videos');
+assert.equal(vm.runInContext('viewer.index',context),59);await vm.runInContext('swipeViewer(1)',context);assert.equal(vm.runInContext('viewer.index',context),60);assert.match(element('#swipe-card').innerHTML,/photo-60/);
+await vm.runInContext('swipeViewer(-1)',context);assert.equal(vm.runInContext('viewer.index',context),59);
+vm.runInContext("detail('swipe-0')",context);assert.equal(element('#swipe-prev').disabled,true);assert.match(element('#swipe-card').innerHTML,/avatar\.jpg/);assert.match(element('#swipe-card').innerHTML,/Linh/);assert.match(element('#swipe-card').innerHTML,/Caption &lt;hello&gt;/);assert.ok(!element('#swipe-card').innerHTML.includes('must-not-render'));assert.ok(!element('#swipe-card').innerHTML.includes('<time>'));assert.ok(!element('#swipe-card').innerHTML.includes('<dl>'));assert.ok(!element('#swipe-card').innerHTML.includes('<details>'));
+await vm.runInContext('swipeViewer(-1)',context);assert.equal(vm.runInContext('viewer.index',context),0,'First card cannot swipe beyond the beginning');
+const swipeCard=element('#swipe-card');swipeCard.getBoundingClientRect=()=>({width:320});
+const pointer=(x,y,t)=>({pointerId:1,button:0,isPrimary:true,clientX:x,clientY:y,timeStamp:t,cancelable:true,preventDefault(){},target:{closest(){return null;}}});
+let captured=false;
+swipeCard.setPointerCapture=()=>{captured=true;};swipeCard.hasPointerCapture=()=>captured;swipeCard.releasePointerCapture=()=>{captured=false;};
+swipeCard.onpointerdown({...pointer(220,80,0),pointerType:'touch',button:-1});assert.equal(captured,true,'Touch captures immediately, including touch events without a mouse button');
+swipeCard.onlostpointercapture({...pointer(220,80,0),target:{}});assert.ok(vm.runInContext('viewer.drag',context),'A bubbled loss of image capture must not cancel the card gesture');
+swipeCard.onpointermove(pointer(90,85,180));await swipeCard.onpointerup(pointer(90,85,220));assert.equal(vm.runInContext('viewer.index',context),1,'Touch swipe advances directly on the media');
+vm.runInContext("detail('swipe-0')",context);
+swipeCard.onpointerdown(pointer(220,80,0));const restingBack=element('#swipe-back').style.transform;swipeCard.onpointermove(pointer(90,85,180));assert.match(swipeCard.style.transform,/translate3d\(-130px/);assert.notEqual(element('#swipe-back').style.transform,restingBack,'Rear layer advances as the front card is dragged');await swipeCard.onpointerup(pointer(90,85,220));assert.equal(vm.runInContext('viewer.index',context),1,'Drag left advances');
+swipeCard.onpointerdown(pointer(100,80,0));swipeCard.onpointermove(pointer(120,82,400));await swipeCard.onpointerup(pointer(120,82,600));assert.equal(vm.runInContext('viewer.index',context),1,'A short slow drag snaps back');assert.equal(swipeCard.style.transform,'');
+swipeCard.onpointerdown(pointer(100,80,0));swipeCard.onpointermove(pointer(230,85,180));await swipeCard.onpointercancel(pointer(230,85,200));assert.equal(vm.runInContext('viewer.index',context),1,'Cancelled pointers never advance');
+swipeCard.onpointerdown(pointer(100,80,0));swipeCard.onpointermove(pointer(102,130,100));assert.equal(vm.runInContext('viewer.drag',context),null,'Vertical scrolling does not swipe a card');
+vm.runInContext("setView('friends');detail('swipe-0')",context);assert.equal(vm.runInContext('viewer.items.length',context),70);await vm.runInContext('swipeViewer(1)',context);assert.match(element('#swipe-card').innerHTML,/photo-2/,'Swipe respects the selected author filter');
+vm.runInContext("stopViewer();state.moments=[normalize({id:'video',user:'friend',video_url:'https://example.com/video.mp4',date:Date.now(),caption:'Video caption'},0)];render();detail('video')",context);assert.match(element('#swipe-card').innerHTML,/<video/);assert.match(element('#swipe-card').innerHTML,/autoplay muted loop playsinline preload="auto"/);assert.ok(!element('#swipe-back').innerHTML.includes('<video'));
+assert.ok(!swipeCard.innerHTML.includes(' controls'),'Live-style video has no native controls');assert.ok(!swipeCard.innerHTML.includes('video-swipe-surface'),'No playback button overlays the video');
+let videoPaused=true,videoPlays=0;
+const liveVideo={get paused(){return videoPaused;},play(){videoPaused=false;videoPlays++;return Promise.resolve();},pause(){videoPaused=true;}};
+swipeCard.querySelector=selector=>selector==='video'?liveVideo:null;
+vm.runInContext('playViewerVideo()',context);assert.equal(videoPlays,1,'Opening a live-style video starts playback without a tap');assert.equal(liveVideo.muted,true);assert.equal(liveVideo.loop,true);assert.equal(liveVideo.controls,false);assert.equal(liveVideo.playsInline,true);
+const videoPointer=(x,t)=>({...pointer(x,80,t),pointerType:'touch',target:{closest(selector){return selector==='video'?{}:null;}}});
+swipeCard.onpointerdown(videoPointer(200,0));await swipeCard.onpointerup(videoPointer(200,20));assert.equal(videoPlays,1,'Tapping does not pause or restart automatic playback');
+vm.runInContext("state.moments=[...state.moments,normalize({id:'next-video',user:'friend',image_url:'https://example.com/next.jpg',date:Date.now()-60000},1)];render();detail('video')",context);
+const playsBeforeSwipe=videoPlays;swipeCard.onpointerdown(videoPointer(220,0));swipeCard.onpointermove(videoPointer(80,180));await swipeCard.onpointerup(videoPointer(80,220));assert.equal(vm.runInContext('viewer.index',context),1,'Video surface swipes without using the caption');
+element('#detail-dialog').open=false;const playsAfterSwipe=videoPlays;vm.runInContext('playViewerVideo()',context);assert.equal(videoPlays,playsAfterSwipe,'Closed viewer must not start playback');element('#detail-dialog').open=true;
+liveVideo.play=()=>Promise.reject(new Error('Autoplay blocked'));vm.runInContext('playViewerVideo()',context);await Promise.resolve();
+for(const [width,height] of [[320,568],[390,844],[1440,900],[844,390]]){
+  const fit=vm.runInContext(`fitViewerMedia(${width},${height})`,context);
+  assert.equal(fit.width,fit.height,'Every moment uses a fixed square frame');assert.ok(fit.width<=width-72);assert.ok(fit.height+180<=height,'Square stack and controls fit the viewport');
+}
+const stableFrame={...element('#swipe-stage').style};
+vm.runInContext("detail('video')",context);assert.deepEqual(element('#swipe-stage').style,stableFrame,'Video with caption and image without caption have identical dimensions');
+assert.match(swipeCard.innerHTML,/<\/video><\/div><div class="viewer-author">/,'Identity is an overlay outside the media element');assert.match(swipeCard.innerHTML,/<div class="viewer-caption"><p>Video caption<\/p><\/div>/,'Caption has its own overlay without the author');
+assert.match(css,/object-fit:cover/);assert.match(css,/backdrop-filter:blur\(20px\)/);
+console.log('Fixed square frames, overlay author/caption, touch gestures and automatic video playback passed');
+vm.runInContext("detail('next-video')",context);assert.equal(element('#swipe-back').hidden,true);assert.equal(element('#swipe-far').hidden,true,'Last card does not show invented duplicate layers');
+// Closing/reopening during an outgoing animation must not overwrite the newly opened card.
+context.window.matchMedia=()=>({matches:false});const swipeAnimations=[];
+swipeCard.animate=(frames,options)=>{let finish;const animation={frames,options,cancel(){},finished:new Promise(resolve=>{finish=resolve;}),finish:()=>finish()};swipeAnimations.push(animation);return animation;};
+vm.runInContext("state.moments=[normalize({id:'one',user:'friend',image_url:'https://example.com/one.jpg'},0),normalize({id:'two',user:'friend',image_url:'https://example.com/two.jpg'},1)];render();detail('one')",context);
+const pendingSwipe=vm.runInContext('swipeViewer(1)',context);assert.equal(vm.runInContext('viewer.busy',context),true);assert.equal(swipeAnimations.length,1);await vm.runInContext('swipeViewer(1)',context);assert.equal(swipeAnimations.length,1,'Ignore repeated clicks while a transition is in progress');
+vm.runInContext("detail('two')",context);swipeAnimations[0].finish();await pendingSwipe;assert.match(element('#swipe-card').innerHTML,/two\.jpg/);assert.equal(vm.runInContext('viewer.busy',context),false);vm.runInContext('stopViewer()',context);assert.equal(element('#swipe-card').innerHTML,'');
+console.log('Swipe viewer: minimal content, full filtered sequence, boundaries, gestures, video and animation cancellation passed');

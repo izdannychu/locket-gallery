@@ -1,5 +1,7 @@
 # Locket Gallery
 
+Xem khoảnh khắc bằng swipe card: mở ảnh từ gallery để vuốt trái/phải trong toàn bộ danh sách đang lọc/sắp xếp, không bị giới hạn bởi trang 60 ảnh. Mọi thẻ dùng cùng khung vuông theo viewport, ảnh/video dùng object-fit:cover nên có thể cắt mép nhưng không kéo giãn; metadata media và caption không thay đổi kích thước khung. Avatar/tên nằm trên ảnh; caption trắng nằm phía dưới trong ô bo tròn có nền blur, caption dài cuộn trong ô. Nội dung chỉ gồm ảnh/video, avatar, tên và caption; không hiển thị thời gian, mã, nguồn, dữ liệu thô hoặc link tệp gốc. Có nút trước/tiếp và phím trái/phải. Kéo ngang dùng Pointer Events + pointer capture, cập nhật transform theo animation frame; thả chưa đủ xa hoặc bị hủy sẽ bật về. Video tự phát lặp lại, tắt tiếng và phát inline như ảnh động, không có nút điều khiển; vuốt trực tiếp trên toàn bộ vùng video để chuyển khoảnh khắc. Popup xếp tối đa ba thẻ: thẻ hiện tại và hai thumbnail thật phía sau, nghiêng nhẹ với bóng đổ; khi kéo, lớp kế tiếp tiến dần lên trước. Chỉ dựng tối đa ba thẻ; video trước được dừng khi chuyển/đóng. Animation tuân thủ reduced-motion và hủy an toàn khi đóng/mở lại nhanh. `src/swipe-viewer.js` được ghép sau `src/app.js` lúc build.
+
 ## Deploy trên Vercel
 
 Mã nguồn hỗ trợ hai đích riêng: Cloudflare Worker/Sites và Vercel. Không trỏ Vercel Function trực tiếp vào `src/server.js` hoặc dùng thư mục `dist/server` làm static output; đó là bản Worker với chữ ký `fetch(request, env)`.
