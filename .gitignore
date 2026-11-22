@@ -1,3 +1,7 @@
 dist/
 node_modules/
+.vercel/
+.env
+.env.local
+.env.*.local
 site.tar.gz

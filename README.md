@@ -1,5 +1,18 @@
 # Locket Gallery
 
+## Deploy trên Vercel
+
+Mã nguồn hỗ trợ hai đích riêng: Cloudflare Worker/Sites và Vercel. Không trỏ Vercel Function trực tiếp vào `src/server.js` hoặc dùng thư mục `dist/server` làm static output; đó là bản Worker với chữ ký `fetch(request, env)`.
+
+- Trong Vercel project, đặt **Root Directory** là `locket-gallery` nếu repository chứa thư mục cha; nếu `package.json` ở ngay root repository thì để `.`.
+- **Framework Preset:** Other. `vercel.json` đặt Build Command `npm run build` và Output Directory `dist/vercel-public`. Node.js: 22.x.
+- Thêm `SESSION_SECRET` là chuỗi ngẫu nhiên ổn định ít nhất 32 byte vào Environment Variables cho Production (và Preview nếu cần), rồi redeploy. Không đưa giá trị thật vào Git hoặc frontend. Có thể sinh bằng `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
+- Homepage được build thành `dist/vercel-public/index.html` và phục vụ tĩnh. Chỉ sáu URL `/api/login`, `/api/logout`, `/api/session`, `/api/friends`, `/api/feed`, `/api/history` được rewrite vào `api/index.js`.
+- `api/index.js` là Vercel Web Standard handler, truyền `process.env.SESSION_SECRET` rõ ràng vào Worker. Header danh tính riêng của Sites bị loại bỏ trên Vercel. Cookie giữ `HttpOnly`, `Secure`, `SameSite=Strict`; kiểm tra Origin vẫn có hiệu lực.
+- Không có `SESSION_SECRET` không làm homepage tĩnh crash, nhưng đăng nhập không thể lưu phiên. API trả lỗi JSON thay vì crash Function.
+
+Với `500 FUNCTION_INVOCATION_FAILED`, cần đọc stack trace để kết luận nguyên nhân production. Lệnh: `vercel logs --request-id <request-id>`. Máy hiện tại chưa đăng nhập Vercel nên chưa lấy được log của request người dùng cung cấp; bản sửa được xác minh bằng test adapter/routing tại máy, chưa redeploy production.
+
 Bộ lọc tháng dùng dialog riêng (lưới 12 tháng, chuyển năm, đánh dấu tháng hiện tại, chọn tháng này hoặc xóa bộ lọc). Không mở popup `input[type=month]` của hệ điều hành. Giá trị `YYYY-MM` vẫn được dùng cho bộ lọc gallery; nhãn hiển thị `Tháng N / YYYY`. Bộ chọn có focus/đóng bằng Escape thông qua native dialog và dùng nút daisyUI.
 
 Giao diện dùng **daisyUI 5 + Tailwind CSS 4**: theme riêng trắng/xám với sidebar xanh than, nhấn vàng Locket, nút, tabs, inputs, selects, cards, stats, badges, alerts và loading từ thư viện. Các dialog dùng HTML `<dialog>` với component daisyUI bên trong. `src/ui.css` khai báo theme và source; `src/style.css` chỉ giữ layout/brand/responsive. Build biên dịch CSS tại máy rồi nhúng vào Worker, không dùng Tailwind/daisyUI CDN hoặc JavaScript runtime thư viện trên trình duyệt. Tham khảo: https://daisyui.com/docs/install/cli/ và https://tailwindcss.com/docs/installation/tailwind-cli.

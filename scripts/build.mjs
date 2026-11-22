@@ -16,5 +16,8 @@ await mkdir('dist/server',{recursive:true});
 await mkdir('dist/.openai',{recursive:true});
 await writeFile('worker/index.js',source);
 await writeFile('dist/server/index.js',source);
+// Vercel serves only this directory as public assets; Worker/source files stay private.
+await mkdir('dist/vercel-public',{recursive:true});
+await writeFile('dist/vercel-public/index.html',html);
 await writeFile('dist/.openai/hosting.json',await readFile('.openai/hosting.json'));
 console.log('Built Locket Gallery');

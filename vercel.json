@@ -1,0 +1,31 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/vercel-public",
+  "functions": {
+    "api/index.js": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/api/login", "destination": "/api/index?__route=login" },
+    { "source": "/api/logout", "destination": "/api/index?__route=logout" },
+    { "source": "/api/session", "destination": "/api/index?__route=session" },
+    { "source": "/api/friends", "destination": "/api/index?__route=friends" },
+    { "source": "/api/feed", "destination": "/api/index?__route=feed" },
+    { "source": "/api/history", "destination": "/api/index?__route=history" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: blob: data:; media-src https: blob:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [ { "key": "Cache-Control", "value": "no-cache" } ]
+    }
+  ]
+}
