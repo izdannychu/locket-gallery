@@ -9,5 +9,10 @@
     "pretest": "node scripts/build.mjs",
     "test": "node --test tests/server.test.mjs && node scripts/check-ui.mjs",
     "validate": "node scripts/validate-artifact.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "daisyui": "^5.8.2",
+    "tailwindcss": "^4.3.5"
   }
 }

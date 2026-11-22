@@ -9,7 +9,7 @@ async function upstream(url,body,token){
   let data;try{data=await r.json();}catch{throw new AppError('Locket trả về dữ liệu không hợp lệ. Vui lòng thử lại.',502);}
   if(!r.ok || data.error || (data.result?.status && ![200,304].includes(data.result.status))){
     const code=data.error?.message||'';
-    throw new AppError(/PASSWORD|EMAIL|CREDENTIAL|LOGIN/i.test(code)?'Email/số điện thoại hoặc mật khẩu chưa đúng.':r.status===429?'Locket đang giới hạn số yêu cầu. Hãy thử lại sau.':'Locket từ chối yêu cầu hoặc API đã thay đổi. Vui lòng đăng nhập lại hoặc nhập bản lưu trữ.',r.status===401?401:502);
+    throw new AppError(/PASSWORD|EMAIL|CREDENTIAL|LOGIN/i.test(code)?'Email/số điện thoại hoặc mật khẩu chưa đúng.':r.status===429?'Locket đang giới hạn số yêu cầu. Hãy thử lại sau.':'Locket từ chối yêu cầu hoặc API đã thay đổi. Vui lòng thử lại hoặc kết nối lại tài khoản.',r.status===401?401:502);
   }return data;
 }
 function b64(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');}

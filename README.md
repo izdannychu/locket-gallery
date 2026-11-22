@@ -1,10 +1,22 @@
 # Locket Gallery
 
+Bộ lọc tháng dùng dialog riêng (lưới 12 tháng, chuyển năm, đánh dấu tháng hiện tại, chọn tháng này hoặc xóa bộ lọc). Không mở popup `input[type=month]` của hệ điều hành. Giá trị `YYYY-MM` vẫn được dùng cho bộ lọc gallery; nhãn hiển thị `Tháng N / YYYY`. Bộ chọn có focus/đóng bằng Escape thông qua native dialog và dùng nút daisyUI.
+
+Giao diện dùng **daisyUI 5 + Tailwind CSS 4**: theme riêng trắng/xám với sidebar xanh than, nhấn vàng Locket, nút, tabs, inputs, selects, cards, stats, badges, alerts và loading từ thư viện. Các dialog dùng HTML `<dialog>` với component daisyUI bên trong. `src/ui.css` khai báo theme và source; `src/style.css` chỉ giữ layout/brand/responsive. Build biên dịch CSS tại máy rồi nhúng vào Worker, không dùng Tailwind/daisyUI CDN hoặc JavaScript runtime thư viện trên trình duyệt. Tham khảo: https://daisyui.com/docs/install/cli/ và https://tailwindcss.com/docs/installation/tailwind-cli.
+
+Chức năng nhập tệp/ảnh/video/JSON đã được gỡ hoàn toàn trên desktop và mobile. Gallery lấy dữ liệu qua kết nối Locket; chế độ minh họa vẫn có thể bật từ màn hình trống.
+
+During sync, a persistent pending notification appears at the bottom-right, showing a spinner and the current photo/page count. It stays visible after closing the account dialog, does not block gallery interaction, and sits above the mobile bottom navigation. Completion replaces it with the existing success popup; pause/error hides the pending state. Manual popovers keep notifications visible above dialogs when supported; reduced-motion preferences disable spinning.
+
+Account/sync UI: the account button is in the top-right header on desktop and mobile. The sidebar memory note and sidebar account button are removed. Date selection, manual sync, pause/retry and sync details live inside the account dialog. Sync completion uses a dismissible top-right notification that auto-hides after five seconds; supported browsers use a manual popover so it also appears above open dialogs. Automatic sync on a later visit stays enabled. The gallery no longer contains date-selection/status banners or manual sync buttons.
+
+Phone layout (up to 680 CSS px): full-width content replaces the left rail, with a fixed bottom navigation bar and safe-area padding. Body/form text is 16px, primary labels and controls 14–16px, metadata 12–13px; headings scale with viewport width. Controls have 44–48px touch targets. A mobile friend dropdown preserves friend filtering, and switching navigation tabs resets it. Month/sort/layout controls share a compact row. Photos use two columns, with a one-column large view and single-column fallback at 360px or below. Dialogs fit the dynamic viewport and scroll independently; date fields stack vertically. Desktop styles remain separate. Browser/mobile visual QA is unverified when no browser connection is available.
+
 Gallery tiếng Việt cho ảnh/video Locket, chạy trên Cloudflare Worker và không cần thư viện runtime.
 
-Yêu cầu Node.js 22+. Chạy `npm run build`, `npm test`, `npm run validate`, sau đó `npm run dev`. Mở http://localhost:4173. Máy chủ local tự sinh khóa phiên trong bộ nhớ; khởi động lại sẽ yêu cầu đăng nhập lại. Có thể cấu hình biến môi trường `SESSION_SECRET` bằng ít nhất 32 byte ngẫu nhiên. Trên Sites, khóa được giữ dưới dạng runtime secret.
+Yêu cầu Node.js 22+. Sau khi lấy mã nguồn, chạy `npm ci` để cài build dependencies theo lockfile, sau đó `npm run dev` (tự build). Chạy `npm test` và `npm run validate` để kiểm tra. Mở http://localhost:4173. Máy chủ local tự sinh khóa phiên trong bộ nhớ; khởi động lại sẽ yêu cầu đăng nhập lại. Có thể cấu hình biến môi trường `SESSION_SECRET` bằng ít nhất 32 byte ngẫu nhiên. Trên Sites, khóa được giữ dưới dạng runtime secret.
 
-Sửa các tệp trong `src/`; `scripts/build.mjs` nhúng giao diện vào Worker và tạo artifact. Không sửa trực tiếp `worker/index.js` vì đây là tệp sinh ra khi build.
+Sửa các tệp trong `src/`; `scripts/build.mjs` biên dịch Tailwind/daisyUI, nhúng CSS cùng JavaScript vào Worker và tạo artifact. Không sửa trực tiếp `worker/index.js` vì đây là tệp sinh ra khi build. `dist/ui.css` là CSS thư viện sinh ra (không theo dõi trong Git).
 
 Các lệnh kiểm tra / build:
 
@@ -25,7 +37,7 @@ dist/
     └── index.js
 ```
 
-Chức năng: đăng nhập email hoặc số quốc tế + mật khẩu (chưa hỗ trợ OTP), thông tin tài khoản, danh sách bạn bè có phân trang, ảnh/video từ feed Locket, lọc theo người/loại/tháng/từ khóa, yêu thích trên thiết bị, xem tệp gốc và metadata. Phiên AES-GCM trong cookie HttpOnly, SameSite=Strict, Secure trên HTTPS, gắn với người dùng Sites và hết hạn sau 7 ngày. Không lưu mật khẩu.
+Chức năng: đăng nhập email hoặc số quốc tế + mật khẩu (chưa hỗ trợ OTP), thông tin tài khoản, danh sách bạn bè có phân trang, ảnh/video từ feed Locket, lọc theo người/loại/tháng, yêu thích trên thiết bị, xem tệp gốc và metadata. Phiên AES-GCM trong cookie HttpOnly, SameSite=Strict, Secure trên HTTPS, gắn với người dùng Sites và hết hạn sau 7 ngày. Không lưu mật khẩu.
 
 Đây là ứng dụng độc lập, tham khảo giao thức feed tại https://github.com/jumpogpo/locket-api. Lịch sử được đọc riêng từ database Firestore `locket`, collection `history/{uid}/entries` của chính tài khoản đang đăng nhập. Nguồn xác minh cấu trúc lịch sử: https://unpkg.com/@doi2523/locket-sdk@1.0.0/packages/firebase/src/services/moments.ts. Không cài hay chạy SDK bên ngoài; ứng dụng dùng REST và phiên hiện tại.
 
@@ -39,18 +51,10 @@ API nội bộ có thể thay đổi hoặc từ chối quyền đọc; chỉ c�
 
 Người dùng đã xác nhận đăng nhập được. Luồng lịch sử mới chưa được đối chiếu với toàn bộ ảnh trong tài khoản thật; kiểm thử giả lập xác minh truy vấn đúng database, phân trang đến ảnh cũ nhất, timestamp trùng nhau, loại trùng feed/history, giữ ảnh khi lỗi, tải tiếp và tạm dừng.
 
-Chỉ metadata và liên kết media được giữ trong IndexedDB, không sao lưu byte ảnh/video gốc. Link media có thể hết hạn hoặc bị thu hồi. Đổi trình duyệt, dùng chế độ ẩn danh, xóa dữ liệu hoặc trình duyệt dọn dung lượng có thể mất bản lưu. Lựa chọn vẫn được giữ sau ngắt kết nối; đăng nhập đúng tài khoản để khôi phục. Dữ liệu nhập thủ công không được tải lên server và mất khi tải lại trang. Yêu thích chỉ lưu mã khoảnh khắc trong localStorage, tách theo nguồn và tài khoản; không gửi reaction lên Locket. Giao diện dùng Inter, nội dung đậm 500, nút/nhãn đậm 600 và tiêu đề đậm 700. Lề, phần giới thiệu và khoảng cách ảnh được thu gọn trên desktop/mobile.
+Chỉ metadata và liên kết media được giữ trong IndexedDB, không sao lưu byte ảnh/video gốc. Link media có thể hết hạn hoặc bị thu hồi. Đổi trình duyệt, dùng chế độ ẩn danh, xóa dữ liệu hoặc trình duyệt dọn dung lượng có thể mất bản lưu. Lựa chọn vẫn được giữ sau ngắt kết nối; đăng nhập đúng tài khoản để khôi phục. Yêu thích chỉ lưu mã khoảnh khắc trong localStorage, tách theo nguồn và tài khoản; không gửi reaction lên Locket. Giao diện dùng Inter, nội dung đậm 500, nút/nhãn đậm 600 và tiêu đề đậm 700–800.
 
-Gallery chỉ dựng tối đa 60 thẻ ảnh mỗi trang; nút Trang trước/Trang tiếp cho phép duyệt toàn bộ ảnh đã tải, kể cả ảnh cũ nhất. Phân trang giao diện không giới hạn lượng ảnh đồng bộ/lưu. Ngày giờ, thứ tự ảnh và kết quả lọc được tái sử dụng. Chuyển tab không dựng lại sidebar/thống kê; nút yêu thích cập nhật tại chỗ; nút đổi kích thước ảnh chỉ đổi CSS. Trạng thái đồng bộ không thay thế lại các thẻ ảnh nếu dữ liệu không đổi. Tìm kiếm chờ 120 ms sau lần gõ gần nhất, ảnh dùng lazy loading và async decoding. Các sự kiện ảnh/nút được xử lý chung tại gallery.
+Gallery chỉ dựng tối đa 60 thẻ ảnh mỗi trang; nút Trang trước/Trang tiếp cho phép duyệt toàn bộ ảnh đã tải, kể cả ảnh cũ nhất. Phân trang giao diện không giới hạn lượng ảnh đồng bộ/lưu. Ngày giờ, thứ tự ảnh và kết quả lọc được tái sử dụng. Chuyển tab không dựng lại sidebar/thống kê; nút yêu thích cập nhật tại chỗ; nút đổi kích thước ảnh chỉ đổi CSS. Trạng thái đồng bộ không thay thế lại các thẻ ảnh nếu dữ liệu không đổi. Ảnh dùng lazy loading và async decoding. Các sự kiện ảnh/nút được xử lý chung tại gallery.
 
 Đo bằng `node scripts/benchmark-ui.mjs` với 10.000 khoảnh khắc trong DOM giả lập: trước sửa, dựng ban đầu ~2630 ms và đổi tab ~1363–2442 ms; sau sửa, dựng ban đầu ~38 ms và đổi tab ~0,3–1,3 ms. Đây chỉ là thời gian xử lý JavaScript trên máy thử, không phải số đo tải ảnh, layout, paint hoặc tương tác trình duyệt thật. Bộ kiểm thử còn kiểm tra 60 thẻ/trang, truy cập ảnh cuối, lọc/sắp xếp, xử lý nút theo delegation và không thay ảnh khi đổi trạng thái/bố cục.
-
-Nhập ảnh/video hoặc JSON. ZIP cần giải nén trước. JSON có thể là mảng khoảnh khắc hoặc chứa `moments`, `photos`, `result.data`. Chưa giả định định dạng archive chính thức khi chưa thấy dữ liệu thực tế. Ví dụ:
-
-```json
-{"me":{"uid":"me","name":"Bạn"},"friends":[{"uid":"friend","name":"Linh"}],"moments":[{"id":"one","user":"friend","image_url":"https://example.com/photo.jpg","caption":"Ngày đẹp","date":"2026-11-04T08:00:00+07:00"}]}
-```
-
-Ảnh/video rời dùng tên tệp làm caption, thời điểm chỉnh sửa làm ngày và người gửi mặc định là Bạn; đây không phải metadata Locket đã xác minh. JSON dùng URL media HTTPS. Hướng dẫn yêu cầu archive: https://help.locket.com/en/articles/14291054-can-i-download-or-request-a-copy-of-my-data
 
 Triển khai qua Sites với quyền riêng tư của chủ sở hữu. `.openai/hosting.json` giữ ID dự án. Browser QA chưa thực hiện được nếu môi trường không cung cấp trình duyệt.
